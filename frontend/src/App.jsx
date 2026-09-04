@@ -10,6 +10,7 @@ function App() {
   const [createdRoom, setCreatedRoom] = useState("");
   const [workspace, setWorkspace] = useState(false);
   const [loading, setLoading] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL;
 
   // -----------------------------------------
   // Restore room ONLY after a page refresh

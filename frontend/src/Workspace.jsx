@@ -173,48 +173,48 @@ const [newFileName, setNewFileName] = useState("");
   // -----------------------------------------
   // WEBSOCKET
   // -----------------------------------------
+useEffect(() => {
+  const WS_URL = API_URL.replace(/^http/, "ws");
 
-  useEffect(() => {
-    const socket = new WebSocket(
-       `${WS_URL}/ws/${roomId}`
-    );
+  const socket = new WebSocket(
+    `${WS_URL}/ws/${roomId}`
+  );
 
-    socketRef.current = socket;
+  socketRef.current = socket;
 
-    socket.onopen = () => {
-      setConnected(true);
-    };
+  socket.onopen = () => {
+    setConnected(true);
+  };
 
-    socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
+  socket.onmessage = (event) => {
+    try {
+      const message = JSON.parse(event.data);
 
-        if (
-          message.type === "code" &&
-          activeFile &&
-          message.file_id === activeFile.id
-        ) {
-          isRemoteChange.current = true;
-          setCode(message.code);
-        }
-      } catch {
-        // Ignore invalid messages
+      if (
+        message.type === "code" &&
+        activeFile &&
+        message.file_id === activeFile.id
+      ) {
+        isRemoteChange.current = true;
+        setCode(message.code);
       }
-    };
+    } catch {
+      // Ignore invalid messages
+    }
+  };
 
-    socket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
+  socket.onerror = (error) => {
+    console.error("WebSocket error:", error);
+  };
 
-    socket.onclose = () => {
-      setConnected(false);
-    };
+  socket.onclose = () => {
+    setConnected(false);
+  };
 
-    return () => {
-      socket.close();
-    };
-  }, [roomId, activeFile]);
-
+  return () => {
+    socket.close();
+  };
+}, [roomId, activeFile]);
   // -----------------------------------------
   // SAVE CODE
   // -----------------------------------------
@@ -1089,7 +1089,7 @@ const [newFileName, setNewFileName] = useState("");
               <div className="flex items-center gap-2 px-3">
 
                 <a
-                  href={`http://127.0.0.1:8000/api/files/${viewingDocument.id}/download`}
+                  href={`${API_URL}/api/files/${viewingDocument.id}/download`}
                   className="rounded-md border border-slate-700 bg-slate-800/50 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
                 >
                   ↓ Download
