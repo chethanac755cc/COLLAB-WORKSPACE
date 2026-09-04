@@ -11,7 +11,7 @@ function App() {
   const [workspace, setWorkspace] = useState(false);
   const [loading, setLoading] = useState(false);
   const API_URL = import.meta.env.VITE_API_URL;
-
+console.log("API_URL:", API_URL);
   // -----------------------------------------
   // Restore room ONLY after a page refresh
   // -----------------------------------------
