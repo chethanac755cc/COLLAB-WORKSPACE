@@ -64,7 +64,7 @@ function App() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/api/rooms",
+        `${API_URL}/api/rooms`,
         {
           method: "POST",
         }
@@ -115,7 +115,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/api/rooms/${roomId.trim()}`
+        `${API_URL}/api/rooms/${roomId.trim()}`
       );
 
       if (!response.ok) {

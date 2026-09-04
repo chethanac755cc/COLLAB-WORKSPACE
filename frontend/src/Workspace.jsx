@@ -15,6 +15,7 @@ function Workspace({ name, roomId }) {
 
   const [showNewFileModal, setShowNewFileModal] = useState(false);
 const [newFileName, setNewFileName] = useState("");
+  const API_URL = import.meta.env.VITE_API_URL;
 
   // -----------------------------------------
   // AI ASSISTANT
@@ -96,7 +97,7 @@ const [newFileName, setNewFileName] = useState("");
     const loadFiles = async () => {
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/api/rooms/${roomId}/files`
+          `${API_URL}/api/rooms/${roomId}/files`
         );
 
         if (!response.ok) return;
@@ -124,7 +125,7 @@ const [newFileName, setNewFileName] = useState("");
     const loadDocuments = async () => {
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/api/rooms/${roomId}/documents`
+          `${API_URL}/api/rooms/${roomId}/documents`
         );
 
         if (!response.ok) return;
@@ -150,7 +151,7 @@ const [newFileName, setNewFileName] = useState("");
     const loadFileCode = async () => {
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/api/files/${activeFile.id}`
+          `${API_URL}/api/files/${activeFile.id}`
         );
 
         if (!response.ok) return;
@@ -175,7 +176,7 @@ const [newFileName, setNewFileName] = useState("");
 
   useEffect(() => {
     const socket = new WebSocket(
-      `ws://localhost:8000/ws/${roomId}`
+       `${WS_URL}/ws/${roomId}`
     );
 
     socketRef.current = socket;
@@ -230,7 +231,7 @@ const [newFileName, setNewFileName] = useState("");
     saveTimeoutRef.current = setTimeout(async () => {
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/api/files/${activeFile.id}`,
+          `${API_URL}/api/files/${activeFile.id}`,
           {
             method: "PUT",
             headers: {
@@ -299,7 +300,7 @@ const [newFileName, setNewFileName] = useState("");
 
   try {
     const response = await fetch(
-      `http://127.0.0.1:8000/api/rooms/${roomId}/files`,
+      `${API_URL}/api/rooms/${roomId}/files`,
       {
         method: "POST",
         headers: {
@@ -322,7 +323,7 @@ const [newFileName, setNewFileName] = useState("");
     }
 
     const filesResponse = await fetch(
-      `http://127.0.0.1:8000/api/rooms/${roomId}/files`
+      `${API_URL}/api/rooms/${roomId}/files`
     );
 
     if (!filesResponse.ok) {
@@ -373,7 +374,7 @@ const [newFileName, setNewFileName] = useState("");
 
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/api/rooms/${roomId}/upload`,
+          `${API_URL}/api/rooms/${roomId}/upload`,
           {
             method: "POST",
             body: formData,
@@ -458,7 +459,7 @@ const [newFileName, setNewFileName] = useState("");
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/api/documents/${doc.id}`,
+        `${API_URL}/api/documents/${doc.id}`,
         {
           method: "DELETE",
         }
@@ -505,7 +506,7 @@ const [newFileName, setNewFileName] = useState("");
 
   try {
     const response = await fetch(
-      `http://127.0.0.1:8000/api/files/${file.id}`,
+      `${API_URL}/api/files/${file.id}`,
       {
         method: "DELETE",
       }
@@ -655,7 +656,7 @@ const [newFileName, setNewFileName] = useState("");
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/api/rooms/${roomId}/ask`,
+        `${API_URL}/api/rooms/${roomId}/ask`,
         {
           method: "POST",
           headers: {
