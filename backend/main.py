@@ -3,7 +3,8 @@ import uuid
 import io
 import csv
 
-from sentence_transformers import SentenceTransformer
+from google import genai
+from google.genai import types
 import httpx
 from pypdf import PdfReader
 from docx import Document
@@ -25,7 +26,10 @@ supabase: Client = create_client(
     SUPABASE_URL,
     SUPABASE_SECRET_KEY
 )
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+
+gemini_client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
+)
 
 
 
@@ -614,13 +618,21 @@ def create_chunks(text: str, chunk_size: int = 1000, overlap: int = 200):
 
 
 def generate_embedding(text: str):
-    return embedding_model.encode(text).tolist()
+    result = gemini_client.models.embed_content(
+        model="gemini-embedding-001",
+        contents=text,
+        config=types.EmbedContentConfig(
+            output_dimensionality=384
+        )
+    )
+
+    return result.embeddings[0].values
 
 def search_document_chunks(
     room_db_id: str,
     query: str,
     match_count: int = 5
-):
+ ):
     query_embedding = generate_embedding(query)
 
     response = (
@@ -643,7 +655,7 @@ def search_document_chunks(
 async def upload_file(
     room_id: str,
     uploaded_file: UploadFile = File(...)
-):
+ ):
     room_id = room_id.upper()
 
     try:
@@ -1001,9 +1013,9 @@ def ask_ai(room_id: str, data: dict):
         )
 
     try:
-        # -----------------------------------------
-        # FIND ROOM
-        # -----------------------------------------
+        # --------------------------------------------------
+        # 1. FIND ROOM
+        # --------------------------------------------------
 
         room_response = (
             supabase.table("rooms")
@@ -1020,19 +1032,15 @@ def ask_ai(room_id: str, data: dict):
 
         room_db_id = room_response.data[0]["id"]
 
-        # -----------------------------------------
-        # VECTOR SIMILARITY SEARCH
-        # -----------------------------------------
+        # --------------------------------------------------
+        # 2. SEARCH RELEVANT DOCUMENT CHUNKS
+        # --------------------------------------------------
 
         chunks = search_document_chunks(
             room_db_id,
             question,
             match_count=10
         )
-
-        # -----------------------------------------
-        # NO RELEVANT DOCUMENTS
-        # -----------------------------------------
 
         if not chunks:
             return {
@@ -1043,9 +1051,9 @@ def ask_ai(room_id: str, data: dict):
                 "sources": []
             }
 
-        # -----------------------------------------
-        # BUILD CONTEXT + UNIQUE SOURCES
-        # -----------------------------------------
+        # --------------------------------------------------
+        # 3. BUILD CONTEXT
+        # --------------------------------------------------
 
         context_parts = []
         source_map = {}
@@ -1064,7 +1072,6 @@ def ask_ai(room_id: str, data: dict):
             if file_response.data:
                 filename = file_response.data[0]["filename"]
 
-            # Add chunk to AI context
             context_parts.append(
                 f"[Source {index}: {filename}]\n"
                 f"{chunk['content']}"
@@ -1074,10 +1081,6 @@ def ask_ai(room_id: str, data: dict):
                 float(chunk["similarity"]),
                 3
             )
-
-            # -------------------------------------
-            # GROUP SOURCES BY FILE
-            # -------------------------------------
 
             if filename not in source_map:
 
@@ -1091,24 +1094,18 @@ def ask_ai(room_id: str, data: dict):
 
                 source_map[filename]["chunks"] += 1
 
-                # Keep highest relevance score
                 source_map[filename]["similarity"] = max(
                     source_map[filename]["similarity"],
                     similarity
                 )
 
-        # Convert dictionary to list
         sources = list(source_map.values())
-
-        # -----------------------------------------
-        # BUILD FINAL CONTEXT
-        # -----------------------------------------
 
         context = "\n\n".join(context_parts)
 
-        # -----------------------------------------
-        # RAG PROMPT
-        # -----------------------------------------
+        # --------------------------------------------------
+        # 4. CREATE RAG PROMPT
+        # --------------------------------------------------
 
         prompt = f"""
 You are the AI assistant inside a collaborative
@@ -1144,49 +1141,34 @@ USER QUESTION
 ANSWER:
 """
 
-        # -----------------------------------------
-        # SEND CONTEXT TO OLLAMA
-        # -----------------------------------------
+        # --------------------------------------------------
+        # 5. GENERATE ANSWER USING GEMINI
+        # --------------------------------------------------
 
-        response = httpx.post(
-            "http://127.0.0.1:11434/api/generate",
-            json={
-                "model": "llama3.2:3b",
-                "prompt": prompt,
-                "stream": False
-            },
-            timeout=120
-        )
+        try:
 
-        # -----------------------------------------
-        # CHECK OLLAMA RESPONSE
-        # -----------------------------------------
-
-        if response.status_code != 200:
-
-            print(
-                "Ollama error:",
-                response.text
+            response = gemini_client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=prompt
             )
+
+            answer = (response.text or "").strip()
+
+        except Exception as error:
+
+            print("Gemini error:", error)
 
             raise HTTPException(
                 status_code=503,
-                detail="Local AI model is unavailable"
+                detail="AI service is unavailable"
             )
 
-        result = response.json()
-
-        answer = result.get(
-            "response",
-            ""
-        ).strip()
+        # --------------------------------------------------
+        # 6. RETURN ANSWER + SOURCES
+        # --------------------------------------------------
 
         if not answer:
             answer = "I couldn't generate an answer."
-
-        # -----------------------------------------
-        # RETURN ANSWER + SOURCES
-        # -----------------------------------------
 
         return {
             "answer": answer,
@@ -1198,10 +1180,7 @@ ANSWER:
 
     except Exception as error:
 
-        print(
-            "RAG ERROR:",
-            error
-        )
+        print("RAG ERROR:", error)
 
         raise HTTPException(
             status_code=503,
